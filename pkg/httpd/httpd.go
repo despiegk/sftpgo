@@ -163,14 +163,15 @@ const (
 	webStaticFilesPathDefault             = "/static"
 	webOpenAPIPathDefault                 = "/openapi"
 	// MaxRestoreSize defines the max size for the loaddata input file
-	MaxRestoreSize       = 10485760 // 10 MB
-	maxRequestSize       = 1048576  // 1MB
-	maxLoginBodySize     = 262144   // 256 KB
-	httpdMaxEditFileSize = 1048576  // 1 MB
-	maxMultipartMem      = 10485760 // 10 MB
-	osWindows            = "windows"
-	otpHeaderCode        = "X-SFTPGO-OTP"
-	mTimeHeader          = "X-SFTPGO-MTIME"
+	MaxRestoreSize         = 10485760 // 10 MB
+	maxRequestSize         = 1048576  // 1MB
+	maxLoginBodySize       = 262144   // 256 KB
+	httpdMaxEditFileSize   = 1048576  // 1 MB
+	maxMultipartMem        = 10485760 // 10 MB
+	osWindows              = "windows"
+	otpHeaderCode          = "X-SFTPGO-OTP"
+	mTimeHeader            = "X-SFTPGO-MTIME"
+	onlyOfficeCallbackPath = "/api/v2/user/onlyoffice"
 )
 
 var (
