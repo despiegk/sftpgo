@@ -727,6 +727,10 @@ func (s *httpdServer) renderEditFilePage(w http.ResponseWriter, r *http.Request,
 			FilePath:      url.QueryEscape(fileName),
 			FileKey:       generateOnlyOfficeFileKey(fileName, info.ModTime()),
 			OnlyOfficeURL: getOnlyOfficeServerAddress(),
+			User: userInfo{
+				Name: connection.User.Username,
+				ID:   strconv.Itoa(int(connection.User.ID)),
+			},
 		}
 		renderClientTemplate(w, templateClientEditOfficeFile, data)
 		return

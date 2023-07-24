@@ -27,6 +27,11 @@ type onlyofficeCallbackData struct {
 	URL    string `json:"url"`
 }
 
+type userInfo struct {
+	Name string
+	ID   string
+}
+
 type editOnlyOfficeFilePage struct {
 	BaseURL       string
 	OnlyOfficeURL string
@@ -35,6 +40,7 @@ type editOnlyOfficeFilePage struct {
 	FileKey       string
 	Ext           string
 	Token         string
+	User          userInfo
 }
 
 type onlyOfficeCallbackResponse struct {
