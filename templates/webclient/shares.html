@@ -47,6 +47,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
                         <th>Scope</th>
                         <th>Info</th>
                         <th></th>
+												<th>Path</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -57,6 +58,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
                         <td>{{.GetScopeAsString}}</td>
                         <td>{{.GetInfoString}}</td>
                         <td>{{if .IsExpired}}1{{else}}0{{end}}</td>
+												<td>{{index .Paths 0}}</td>
                     </tr>
                     {{end}}
                 </tbody>
@@ -215,13 +217,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
                 var shareID = shareData[0];
                 var shareScope = shareData[2];
                 var isExpired = shareData[4];
+								var sharePath = shareData[5];
                 if (isExpired == "1"){
                     $('#expiredShare').show();
                     $('#writeShare').hide();
                     $('#readShare').hide();
                 } else {
                     var shareURL = '{{.BasePublicSharesURL}}' + "/" + fixedEncodeURIComponent(shareID);
-										var editURL = '{{.EditPublicSharesURL}}' + "?id=" + fixedEncodeURIComponent(shareID);
+										var editURL = '{{.EditPublicSharesURL}}' + "?path=" + sharePath + "&id=" + fixedEncodeURIComponent(shareID);
                     if (shareScope == 'Read'){
                         $('#expiredShare').hide();
                         $('#writeShare').hide();
@@ -257,7 +260,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
             "buttons": [],
             "columnDefs": [
                 {
-                    "targets": [0, 4],
+                    "targets": [0, 4, 5],
                     "visible": false,
                     "searchable": false
                 }
