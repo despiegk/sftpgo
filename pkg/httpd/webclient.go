@@ -706,11 +706,31 @@ func (s *httpdServer) renderClientMFAPage(w http.ResponseWriter, r *http.Request
 }
 
 func (s *httpdServer) renderEditFilePage(w http.ResponseWriter, r *http.Request, fileName, fileData string, readOnly bool) {
+	var connection *Connection
+	var err error
 	if !readOnly && checkOnlyOfficeExt(fileName) {
-		connection, err := getUserConnection(w, r)
-		if err != nil {
-			s.renderInternalServerErrorPage(w, r, err)
-			return
+		// id is share ID
+		shareID := getURLParam(r, "id")
+		documentURL := getServerAddress()
+		var username string
+		var share dataprovider.Share
+		if shareID != "" {
+			validScopes := []dataprovider.ShareScope{dataprovider.ShareScopeRead, dataprovider.ShareScopeReadWrite}
+			share, connection, err = s.checkPublicShare(w, r, validScopes)
+			if err != nil {
+				return
+			}
+			documentURL += "/web/client/pubshares/" + shareID
+			username = share.Username
+		} else {
+			connection, err = getUserConnection(w, r)
+			if err != nil {
+				s.renderInternalServerErrorPage(w, r, err)
+				return
+			}
+			path := url.QueryEscape(fileName)
+			tokenString := jwtauth.TokenFromCookie(r)
+			documentURL += fmt.Sprintf("/api/v2/user/files?path=%s&jwt=%s", path, tokenString)
 		}
 		name := connection.User.GetCleanedPath(fileName)
 		info, err := connection.Stat(name, 0)
@@ -731,6 +751,9 @@ func (s *httpdServer) renderEditFilePage(w http.ResponseWriter, r *http.Request,
 				Name: connection.User.Username,
 				ID:   strconv.Itoa(int(connection.User.ID)),
 			},
+			ShareID:     shareID,
+			DocumentURL: documentURL,
+			Username:    username,
 		}
 		renderClientTemplate(w, templateClientEditOfficeFile, data)
 		return
@@ -1210,8 +1233,19 @@ func (s *httpdServer) handleClientEditFile(w http.ResponseWriter, r *http.Reques
 		s.renderClientForbiddenPage(w, r, "Invalid token claims")
 		return
 	}
+	username := claims.Username
 
-	user, err := dataprovider.GetUserWithGroupSettings(claims.Username, "")
+	shareID := getURLParam(r, "id")
+	if shareID != "" {
+		validScopes := []dataprovider.ShareScope{dataprovider.ShareScopeRead, dataprovider.ShareScopeReadWrite}
+		share, _, err := s.checkPublicShare(w, r, validScopes)
+		if err != nil {
+			return
+		}
+		username = share.Username
+	}
+
+	user, err := dataprovider.GetUserWithGroupSettings(username, "")
 	if err != nil {
 		s.renderClientMessagePage(w, r, "Unable to retrieve your user", "", getRespStatus(err), nil, "")
 		return

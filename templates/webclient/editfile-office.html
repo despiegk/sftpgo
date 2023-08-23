@@ -7,10 +7,10 @@
             "fileType": "{{.Ext}}",
             "key": "{{.FileKey}}",
             "title": "{{.FileName}}",
-            "url": "{{.BaseURL}}/api/v2/user/files?path={{.FilePath}}&jwt={{.Token}}"
+            "url": "{{.DocumentURL}}"
         },
         "editorConfig": {
-            "callbackUrl": "{{.BaseURL}}/api/v2/user/onlyoffice?path={{.FilePath}}&jwt={{.Token}}",
+            "callbackUrl": "{{.BaseURL}}/api/v2/user/onlyoffice?path={{.FilePath}}&jwt={{.Token}}&shared_id={{.ShareID}}&username={{.Username}}",
             "user": {
                 "id": "{{.User.ID}}",
                 "name": "{{.User.Name}}"

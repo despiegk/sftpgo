@@ -41,6 +41,9 @@ type editOnlyOfficeFilePage struct {
 	Ext           string
 	Token         string
 	User          userInfo
+	ShareID       string
+	DocumentURL   string
+	Username      string
 }
 
 type onlyOfficeCallbackResponse struct {
@@ -75,7 +78,6 @@ func checkOnlyOfficeExt(fileName string) bool {
 }
 
 func onlyOfficeWriteCallback(w http.ResponseWriter, r *http.Request) {
-
 	connection, err := getUserConnection(w, r)
 	if err != nil {
 		return
@@ -91,7 +93,6 @@ func onlyOfficeWriteCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if callbackData.Status == 2 {
-
 		fs, fsPath, err := connection.GetFsAndResolvedPath(fileName)
 		if err != nil {
 			sendAPIResponse(w, r, err, fmt.Sprintf("Unable to save file from only office %#v", fileName), getMappedStatusCode(err))
