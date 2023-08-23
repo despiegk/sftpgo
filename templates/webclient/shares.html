@@ -111,7 +111,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
                     <p>If the share consists of a single file you can download it uncompressed using this <a id="readUncompressedLink" href="#" target="_blank">link</a>.</p>
                 </div>
                 <div id="writeShare">
-                    <p>You can upload one or more files to the shared directory using this <a id="writePageLink" href="#" target="_blank">page</a></p>
+									<p>You can upload one or more files to the shared directory using this <a id="writePageLink" href="#" target="_blank">page</a></p>
+									<p>You can edit shared file using this <a id="editPageLink" href="#" target="_blank">page</a></p>
                 </div>
                 <div id="expiredShare">
                     This share is no longer accessible because it has expired
@@ -220,6 +221,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
                     $('#readShare').hide();
                 } else {
                     var shareURL = '{{.BasePublicSharesURL}}' + "/" + fixedEncodeURIComponent(shareID);
+										var editURL = '{{.EditPublicSharesURL}}' + "?id=" + fixedEncodeURIComponent(shareID);
                     if (shareScope == 'Read'){
                         $('#expiredShare').hide();
                         $('#writeShare').hide();
@@ -236,6 +238,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
                         $('#readShare').hide();
                         $('#writePageLink').attr("href", shareURL+"/upload");
                         $('#writePageLink').attr("title", shareURL+"/upload");
+												$('#editPageLink').attr("href", editURL);
+                        $('#editPageLink').attr("title", editURL);
                     }
                 }
                 $('#linkModal').modal('show');

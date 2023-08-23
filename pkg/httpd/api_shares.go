@@ -448,7 +448,11 @@ func (s *httpdServer) checkPublicShare(w http.ResponseWriter, r *http.Request, v
 		}
 	}
 
-	shareID := getURLParam(r, "id")
+	shareID := r.URL.Query().Get("id")
+	if shareID == "" {
+		shareID = getURLParam(r, "id")
+	}
+
 	share, err := dataprovider.ShareExists(shareID, "")
 	if err != nil {
 		statusCode := getRespStatus(err)

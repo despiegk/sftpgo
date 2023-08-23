@@ -224,6 +224,7 @@ type clientSharesPage struct {
 	baseClientPage
 	Shares              []dataprovider.Share
 	BasePublicSharesURL string
+	EditPublicSharesURL string
 }
 
 type clientSharePage struct {
@@ -710,7 +711,7 @@ func (s *httpdServer) renderEditFilePage(w http.ResponseWriter, r *http.Request,
 	var err error
 	if !readOnly && checkOnlyOfficeExt(fileName) {
 		// id is share ID
-		shareID := getURLParam(r, "id")
+		shareID := r.URL.Query().Get("id")
 		documentURL := getServerAddress()
 		var username string
 		var share dataprovider.Share
@@ -1024,6 +1025,10 @@ func (s *httpdServer) handleShareGetDirContents(w http.ResponseWriter, r *http.R
 		res["url"] = getFileObjectURL(share.GetRelativePath(name), info.Name(),
 			path.Join(webClientPubSharesPath, share.ShareID, "browse"))
 		res["last_modified"] = getFileObjectModTime(info.ModTime())
+		if info.Size() < httpdMaxEditFileSize {
+			res["edit_url"] = getFileObjectURL(name, info.Name(),
+				webClientEditFilePath) + fmt.Sprintf("&id=%s", share.ShareID)
+		}
 		results = append(results, res)
 	}
 
@@ -1235,9 +1240,14 @@ func (s *httpdServer) handleClientEditFile(w http.ResponseWriter, r *http.Reques
 	}
 	username := claims.Username
 
-	shareID := getURLParam(r, "id")
+	shareID := r.URL.Query().Get("id")
 	if shareID != "" {
 		validScopes := []dataprovider.ShareScope{dataprovider.ShareScopeRead, dataprovider.ShareScopeReadWrite}
+
+		q := r.URL.Query()
+		q.Add("id", shareID)
+		r.URL.RawQuery = q.Encode()
+
 		share, _, err := s.checkPublicShare(w, r, validScopes)
 		if err != nil {
 			return
@@ -1476,6 +1486,7 @@ func (s *httpdServer) handleClientGetShares(w http.ResponseWriter, r *http.Reque
 		baseClientPage:      s.getBaseClientPageData(pageClientSharesTitle, webClientSharesPath, r),
 		Shares:              shares,
 		BasePublicSharesURL: webClientPubSharesPath,
+		EditPublicSharesURL: webClientEditFilePathDefault,
 	}
 	renderClientTemplate(w, templateClientShares, data)
 }

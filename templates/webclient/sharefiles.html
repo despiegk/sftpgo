@@ -61,6 +61,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
                         <th>Name</th>
                         <th>Size</th>
                         <th>Last modified</th>
+                        <th></th>
                     </tr>
                 </thead>
             </table>
@@ -115,6 +116,18 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 <script src="{{.StaticURL}}/vendor/filepond/filepond.min.js"></script>
 <script type="text/javascript">
     var spinnerDone = false;
+		var onlyOfficeExt = [
+    	"doc", "docx", "odt", "ppt", "pptx", "xls", "xlsx", "ods",
+    ]
+		
+    function checkOnlyOfficeExt(extension) {
+			for (i = 0; i < onlyOfficeExt.length; i++) {
+					if (extension == onlyOfficeExt[i]) {
+							return true
+					}
+			}
+			return false
+		}
 
     function shortenData(d, cutoff) {
         if ( typeof d !== 'string' ) {
@@ -506,7 +519,25 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
                         return data;
                     }
                 },
-                { "data": "last_modified" }
+                { "data": "last_modified" },
+								{ "data": "edit_url",
+                    "render": function (data, type, row) {
+                        if (type === 'display') {
+                            let filename = escapeHTML(row["name"]);
+                            let extension = filename.slice((filename.lastIndexOf(".") - 1 >>> 0) + 2).toLowerCase();
+                            if (data){
+                                if (checkOnlyOfficeExt(extension)){
+                                    {{if eq .Scope 1 }}
+																		return "";
+                                    {{else}}
+																		return `<a href="${data}"><i class="fas fa-edit"></i></a>`;
+                                    {{end}}
+                                }
+                            }
+                        }
+                        return "";
+                    }
+                }
             ],
             "buttons": [],
             "lengthChange": true,

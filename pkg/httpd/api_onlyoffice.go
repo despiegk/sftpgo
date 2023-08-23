@@ -17,12 +17,13 @@ var supportedOnlyOfficeExtensions = []string{
 	"doc", "docx", "odt", "ppt", "pptx", "xls", "xlsx", "ods",
 }
 
+// only office environment variables
 const (
-	ServerAdressEnvKey           = "SFTP_SERVER_ADDR"
-	OnlyOfficeServerAdressEnvKey = "ONLYOFFICE_SERVER_ADDR"
+	ServerAddressEnvKey           = "SFTP_SERVER_ADDR"
+	OnlyOfficeServerAddressEnvKey = "ONLYOFFICE_SERVER_ADDR"
 )
 
-type onlyofficeCallbackData struct {
+type onlyOfficeCallbackData struct {
 	Status int    `json:"status"`
 	URL    string `json:"url"`
 }
@@ -51,11 +52,11 @@ type onlyOfficeCallbackResponse struct {
 }
 
 func getServerAddress() string {
-	return os.Getenv(ServerAdressEnvKey)
+	return os.Getenv(ServerAddressEnvKey)
 }
 
 func getOnlyOfficeServerAddress() string {
-	return os.Getenv(OnlyOfficeServerAdressEnvKey)
+	return os.Getenv(OnlyOfficeServerAddressEnvKey)
 }
 
 func generateOnlyOfficeFileKey(fileName string, modTime time.Time) string {
@@ -84,7 +85,7 @@ func onlyOfficeWriteCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	fileName := connection.User.GetCleanedPath(r.URL.Query().Get("path"))
 
-	callbackData := onlyofficeCallbackData{}
+	callbackData := onlyOfficeCallbackData{}
 
 	err = render.DecodeJSON(r.Body, &callbackData)
 	if err != nil {
