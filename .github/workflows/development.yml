@@ -90,15 +90,15 @@ jobs:
 
       - name: Run test cases using bolt provider
         run: |
-          go test -v -tags nopgxregisterdefaulttypes -p 1 -timeout 2m ./internal/config -covermode=atomic
-          go test -v -tags nopgxregisterdefaulttypes -p 1 -timeout 5m ./internal/common -covermode=atomic
-          go test -v -tags nopgxregisterdefaulttypes -p 1 -timeout 5m ./internal/httpd -covermode=atomic
-          go test -v -tags nopgxregisterdefaulttypes -p 1 -timeout 8m ./internal/sftpd -covermode=atomic
-          go test -v -tags nopgxregisterdefaulttypes -p 1 -timeout 5m ./internal/ftpd -covermode=atomic
-          go test -v -tags nopgxregisterdefaulttypes -p 1 -timeout 5m ./internal/webdavd -covermode=atomic
-          go test -v -tags nopgxregisterdefaulttypes -p 1 -timeout 2m ./internal/telemetry -covermode=atomic
-          go test -v -tags nopgxregisterdefaulttypes -p 1 -timeout 2m ./internal/mfa -covermode=atomic
-          go test -v -tags nopgxregisterdefaulttypes -p 1 -timeout 2m ./internal/command -covermode=atomic
+          go test -v -tags nopgxregisterdefaulttypes -p 1 -timeout 2m ./pkg/config -covermode=atomic
+          go test -v -tags nopgxregisterdefaulttypes -p 1 -timeout 5m ./pkg/common -covermode=atomic
+          go test -v -tags nopgxregisterdefaulttypes -p 1 -timeout 5m ./pkg/httpd -covermode=atomic
+          go test -v -tags nopgxregisterdefaulttypes -p 1 -timeout 8m ./pkg/sftpd -covermode=atomic
+          go test -v -tags nopgxregisterdefaulttypes -p 1 -timeout 5m ./pkg/ftpd -covermode=atomic
+          go test -v -tags nopgxregisterdefaulttypes -p 1 -timeout 5m ./pkg/webdavd -covermode=atomic
+          go test -v -tags nopgxregisterdefaulttypes -p 1 -timeout 2m ./pkg/telemetry -covermode=atomic
+          go test -v -tags nopgxregisterdefaulttypes -p 1 -timeout 2m ./pkg/mfa -covermode=atomic
+          go test -v -tags nopgxregisterdefaulttypes -p 1 -timeout 2m ./pkg/command -covermode=atomic
         env:
           SFTPGO_DATA_PROVIDER__DRIVER: bolt
           SFTPGO_DATA_PROVIDER__NAME: 'sftpgo_bolt.db'
@@ -236,9 +236,9 @@ jobs:
 
       - name: Build
         run: |
-          go build -trimpath -tags nopgxregisterdefaulttypes,nogcs,nos3,noportable,nobolt,nomysql,nopgsql,nosqlite,nometrics,noazblob,unixcrypt -ldflags "-s -w -X github.com/drakkan/sftpgo/v2/pkg/internal/version.commit=`git describe --always --abbrev=8 --dirty` -X github.com/drakkan/sftpgo/v2/pkg/version.date=`date -u +%FT%TZ`" -o sftpgo
+          go build -trimpath -tags nopgxregisterdefaulttypes,nogcs,nos3,noportable,nobolt,nomysql,nopgsql,nosqlite,nometrics,noazblob,unixcrypt -ldflags "-s -w -X github.com/drakkan/sftpgo/v2/pkg/version.commit=`git describe --always --abbrev=8 --dirty` -X github.com/drakkan/sftpgo/v2/pkg/version.date=`date -u +%FT%TZ`" -o sftpgo
           ./sftpgo -v
-          cp -r openapi static templates internal/bundle/
+          cp -r openapi static templates pkg/bundle/
           go build -trimpath -tags nopgxregisterdefaulttypes,bundle -ldflags "-s -w -X github.com/drakkan/sftpgo/v2/pkg/version.commit=`git describe --always --abbrev=8 --dirty` -X github.com/drakkan/sftpgo/v2/pkg/version.date=`date -u +%FT%TZ`" -o sftpgo
           ./sftpgo -v
 
