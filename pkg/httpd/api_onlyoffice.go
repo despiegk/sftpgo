@@ -17,12 +17,13 @@ var supportedOnlyOfficeExtensions = []string{
 	"doc", "docx", "odt", "ppt", "pptx", "xls", "xlsx", "ods",
 }
 
+// only office environment variables
 const (
-	ServerAdressEnvKey           = "SFTP_SERVER_ADDR"
-	OnlyOfficeServerAdressEnvKey = "ONLYOFFICE_SERVER_ADDR"
+	ServerAddressEnvKey           = "SFTP_SERVER_ADDR"
+	OnlyOfficeServerAddressEnvKey = "ONLYOFFICE_SERVER_ADDR"
 )
 
-type onlyofficeCallbackData struct {
+type onlyOfficeCallbackData struct {
 	Status int    `json:"status"`
 	URL    string `json:"url"`
 }
@@ -48,11 +49,11 @@ type onlyOfficeCallbackResponse struct {
 }
 
 func getServerAddress() string {
-	return os.Getenv(ServerAdressEnvKey)
+	return os.Getenv(ServerAddressEnvKey)
 }
 
 func getOnlyOfficeServerAddress() string {
-	return os.Getenv(OnlyOfficeServerAdressEnvKey)
+	return os.Getenv(OnlyOfficeServerAddressEnvKey)
 }
 
 func generateOnlyOfficeFileKey(fileName string, modTime time.Time) string {
@@ -75,14 +76,13 @@ func checkOnlyOfficeExt(fileName string) bool {
 }
 
 func onlyOfficeWriteCallback(w http.ResponseWriter, r *http.Request) {
-
 	connection, err := getUserConnection(w, r)
 	if err != nil {
 		return
 	}
 	fileName := connection.User.GetCleanedPath(r.URL.Query().Get("path"))
 
-	callbackData := onlyofficeCallbackData{}
+	callbackData := onlyOfficeCallbackData{}
 
 	err = render.DecodeJSON(r.Body, &callbackData)
 	if err != nil {
@@ -91,7 +91,6 @@ func onlyOfficeWriteCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if callbackData.Status == 2 {
-
 		fs, fsPath, err := connection.GetFsAndResolvedPath(fileName)
 		if err != nil {
 			sendAPIResponse(w, r, err, fmt.Sprintf("Unable to save file from only office %#v", fileName), getMappedStatusCode(err))
