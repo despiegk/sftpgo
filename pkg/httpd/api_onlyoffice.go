@@ -19,7 +19,9 @@ var supportedOnlyOfficeExtensions = []string{
 
 // only office environment variables
 const (
-	ServerAddressEnvKey           = "SFTP_SERVER_ADDR"
+	// ServerAddressEnvKey Key for ServerAddress env variable
+	ServerAddressEnvKey = "SFTP_SERVER_ADDR"
+	// OnlyOfficeServerAddressEnvKey Key for OnlyOfficeServerAddress env variable
 	OnlyOfficeServerAddressEnvKey = "ONLYOFFICE_SERVER_ADDR"
 )
 
