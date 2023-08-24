@@ -10,6 +10,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/drakkan/sftpgo/v2/pkg/dataprovider"
 	"github.com/go-chi/render"
 )
 
@@ -44,7 +45,6 @@ type editOnlyOfficeFilePage struct {
 	User          userInfo
 	ShareID       string
 	DocumentURL   string
-	Username      string
 }
 
 type onlyOfficeCallbackResponse struct {
@@ -78,11 +78,24 @@ func checkOnlyOfficeExt(fileName string) bool {
 	return false
 }
 
-func onlyOfficeWriteCallback(w http.ResponseWriter, r *http.Request) {
-	connection, err := getUserConnection(w, r)
-	if err != nil {
-		return
+func (s *httpdServer) onlyOfficeWriteCallback(w http.ResponseWriter, r *http.Request) {
+	var connection *Connection
+	var err error
+
+	shareID := r.URL.Query().Get("id")
+	if shareID != "" {
+		validScopes := []dataprovider.ShareScope{dataprovider.ShareScopeRead, dataprovider.ShareScopeReadWrite}
+		_, connection, err = s.checkPublicShare(w, r, validScopes)
+		if err != nil {
+			return
+		}
+	} else {
+		connection, err = getUserConnection(w, r)
+		if err != nil {
+			return
+		}
 	}
+
 	fileName := connection.User.GetCleanedPath(r.URL.Query().Get("path"))
 
 	callbackData := onlyOfficeCallbackData{}

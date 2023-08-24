@@ -41,11 +41,7 @@ func getUserConnection(w http.ResponseWriter, r *http.Request) (*Connection, err
 		sendAPIResponse(w, r, err, "Invalid token claims", http.StatusBadRequest)
 		return nil, fmt.Errorf("invalid token claims %w", err)
 	}
-	username := r.URL.Query().Get("username")
-	if username == "" {
-		username = claims.Username
-	}
-	user, err := dataprovider.GetUserWithGroupSettings(username, "")
+	user, err := dataprovider.GetUserWithGroupSettings(claims.Username, "")
 	if err != nil {
 		sendAPIResponse(w, r, nil, "Unable to retrieve your user", getRespStatus(err))
 		return nil, err

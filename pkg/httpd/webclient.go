@@ -713,16 +713,13 @@ func (s *httpdServer) renderEditFilePage(w http.ResponseWriter, r *http.Request,
 		// id is share ID
 		shareID := r.URL.Query().Get("id")
 		documentURL := getServerAddress()
-		var username string
-		var share dataprovider.Share
 		if shareID != "" {
 			validScopes := []dataprovider.ShareScope{dataprovider.ShareScopeRead, dataprovider.ShareScopeReadWrite}
-			share, connection, err = s.checkPublicShare(w, r, validScopes)
+			_, connection, err = s.checkPublicShare(w, r, validScopes)
 			if err != nil {
 				return
 			}
 			documentURL += "/web/client/pubshares/" + shareID
-			username = share.Username
 		} else {
 			connection, err = getUserConnection(w, r)
 			if err != nil {
@@ -754,7 +751,6 @@ func (s *httpdServer) renderEditFilePage(w http.ResponseWriter, r *http.Request,
 			},
 			ShareID:     shareID,
 			DocumentURL: documentURL,
-			Username:    username,
 		}
 		renderClientTemplate(w, templateClientEditOfficeFile, data)
 		return
