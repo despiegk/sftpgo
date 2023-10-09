@@ -180,7 +180,6 @@ const (
 	webClientGetPDFPathDefault            = "/web/client/getpdf"
 	webStaticFilesPathDefault             = "/static"
 	webOpenAPIPathDefault                 = "/openapi"
-
 	// MaxRestoreSize defines the max size for the loaddata input file
 	MaxRestoreSize         = 10485760 // 10 MB
 	maxRequestSize         = 1048576  // 1MB
