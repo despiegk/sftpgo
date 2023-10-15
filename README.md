@@ -22,7 +22,7 @@ I'd like to make SFTPGo into a sustainable long term project and would not like 
 If you use SFTPGo, it is in your best interest to ensure that the project you rely on stays healthy and well maintained.
 This can only happen with your donations and [sponsorships](https://github.com/sponsors/drakkan) :heart:
 
-You can also purchase support plans from the [SFTPGo website](https://sftpgo.com/#pricing).
+You can also purchase, using many payment methods, support plans from the [SFTPGo website](https://sftpgo.com/#pricing).
 
 With sponsorships/donations or support plans we establish a channel for reciprocal access, ensuring better outcomes for both you and the project.
 
@@ -67,6 +67,7 @@ If you report an invalid issue or ask for step-by-step support, your issue will 
 - Partial authentication. You can configure multi-step authentication requiring, for example, the user password after successful public key authentication.
 - Per-user authentication methods.
 - [Two-factor authentication](./docs/howto/two-factor-authentication.md) based on time-based one time passwords (RFC 6238) which works with Authy, Google Authenticator, Microsoft Authenticator and other compatible apps.
+- LDAP/Active Directory authentication using a [plugin](https://github.com/sftpgo/sftpgo-plugin-auth).
 - Simplified user administrations using [groups](./docs/groups.md).
 - [Roles](./docs/roles.md) allow to create limited administrators who can only create and manage users with their role.
 - Custom authentication via [external programs/HTTP API](./docs/external-auth.md).

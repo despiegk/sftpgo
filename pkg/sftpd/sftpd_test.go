@@ -573,7 +573,7 @@ func TestBasicSFTPHandling(t *testing.T) {
 	assert.NotEmpty(t, sshCommands)
 	sshAuths := status.GetSupportedAuthsAsString()
 	assert.NotEmpty(t, sshAuths)
-	assert.NotEmpty(t, status.GetHostKeyAlgosAsString())
+	assert.NotEmpty(t, status.HostKeys[0].GetAlgosAsString())
 	assert.NotEmpty(t, status.GetMACsAsString())
 	assert.NotEmpty(t, status.GetKEXsAsString())
 	assert.NotEmpty(t, status.GetCiphersAsString())
@@ -3785,6 +3785,17 @@ func TestExternalAuthEmptyResponse(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 10, user.MaxSessions)
 	assert.Equal(t, 100, user.QuotaFiles)
+
+	// the auth script accepts any password and returns an empty response, the
+	// user password must be updated
+	u.Password = defaultUsername
+	conn, client, err = getSftpClient(u, usePubKey)
+	if assert.NoError(t, err) {
+		defer conn.Close()
+		defer client.Close()
+		err = checkBasicSFTP(client)
+		assert.NoError(t, err)
+	}
 
 	_, err = httpdtest.RemoveUser(user, http.StatusOK)
 	assert.NoError(t, err)
@@ -8386,6 +8397,35 @@ func TestWildcardPermissions(t *testing.T) {
 	assert.True(t, user.HasPerm(dataprovider.PermListItems, "/abc/a/a/a/b"))
 }
 
+func TestRootWildcardPerms(t *testing.T) {
+	user := getTestUser(true)
+	user.Permissions = make(map[string][]string)
+	user.Permissions["/"] = []string{dataprovider.PermListItems}
+	user.Permissions["/*"] = []string{dataprovider.PermDelete}
+	user.Permissions["/p/*"] = []string{dataprovider.PermDownload, dataprovider.PermUpload}
+	user.Permissions["/p/2"] = []string{dataprovider.PermCreateDirs}
+	user.Permissions["/pa"] = []string{dataprovider.PermChmod}
+	user.Permissions["/p/3/4"] = []string{dataprovider.PermChtimes}
+	assert.True(t, user.HasPerm(dataprovider.PermListItems, "/"))
+	assert.True(t, user.HasPerm(dataprovider.PermDelete, "/p1"))
+	assert.True(t, user.HasPerm(dataprovider.PermDelete, "/ppppp"))
+	assert.False(t, user.HasPerm(dataprovider.PermDelete, "/pa"))
+	assert.True(t, user.HasPerm(dataprovider.PermChmod, "/pa"))
+	assert.True(t, user.HasPerm(dataprovider.PermUpload, "/p/1"))
+	assert.True(t, user.HasPerm(dataprovider.PermUpload, "/p/p"))
+	assert.False(t, user.HasPerm(dataprovider.PermUpload, "/p/2"))
+	assert.True(t, user.HasPerm(dataprovider.PermCreateDirs, "/p/2"))
+	assert.True(t, user.HasPerm(dataprovider.PermCreateDirs, "/p/2/a"))
+	assert.True(t, user.HasPerm(dataprovider.PermDownload, "/p/3"))
+	assert.True(t, user.HasPerm(dataprovider.PermDownload, "/p/a/a/a"))
+	assert.False(t, user.HasPerm(dataprovider.PermDownload, "/p/3/4"))
+	assert.True(t, user.HasPerm(dataprovider.PermChtimes, "/p/3/4"))
+	assert.True(t, user.HasPerm(dataprovider.PermDelete, "/pb/a/a/a"))
+	assert.True(t, user.HasPerm(dataprovider.PermDelete, "/abc/a/a/a"))
+	assert.False(t, user.HasPerm(dataprovider.PermListItems, "/abc/a/a/a/b"))
+	assert.True(t, user.HasPerm(dataprovider.PermDelete, "/abc/a/a/a/b"))
+}
+
 func TestFilterFilePatterns(t *testing.T) {
 	user := getTestUser(true)
 	pattern := sdk.PatternsFilter{
@@ -11504,7 +11544,7 @@ func getExtAuthScriptContent(user dataprovider.User, nonJSONResponse, emptyRespo
 		return extAuthContent
 	}
 	extAuthContent = append(extAuthContent, []byte(fmt.Sprintf("if test \"$SFTPGO_AUTHD_USERNAME\" = \"%v\"; then\n", user.Username))...)
-	if len(username) > 0 {
+	if username != "" {
 		user.Username = username
 	}
 	u, _ := json.Marshal(user)

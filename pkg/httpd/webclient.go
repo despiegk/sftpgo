@@ -1310,7 +1310,7 @@ func (s *httpdServer) handleClientEditFile(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	s.renderEditFilePage(w, r, name, b.String(), util.Contains(user.Filters.WebClient, sdk.WebClientWriteDisabled))
+	s.renderEditFilePage(w, r, name, b.String(), !user.CanAddFilesFromWeb(path.Dir(name)))
 }
 
 func (s *httpdServer) handleClientAddShareGet(w http.ResponseWriter, r *http.Request) {
@@ -1565,8 +1565,7 @@ func getShareFromPostFields(r *http.Request) (*dataprovider.Share, error) {
 	share.Name = strings.TrimSpace(r.Form.Get("name"))
 	share.Description = r.Form.Get("description")
 	for _, p := range r.Form["paths"] {
-		p = strings.TrimSpace(p)
-		if p != "" {
+		if strings.TrimSpace(p) != "" {
 			share.Paths = append(share.Paths, p)
 		}
 	}

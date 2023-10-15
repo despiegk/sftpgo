@@ -3490,7 +3490,7 @@ func doBuiltinKeyboardInteractiveAuth(user *User, client ssh.KeyboardInteractive
 		return 0, err
 	}
 	if len(answers) != 1 {
-		return 0, fmt.Errorf("unexpected number of answers: %v", len(answers))
+		return 0, fmt.Errorf("unexpected number of answers: %d", len(answers))
 	}
 	err = user.LoadAndApplyGroupSettings()
 	if err != nil {
@@ -3500,16 +3500,20 @@ func doBuiltinKeyboardInteractiveAuth(user *User, client ssh.KeyboardInteractive
 	if err != nil {
 		return 0, err
 	}
+	return checkKeyboardInteractiveSecondFactor(user, client, protocol)
+}
+
+func checkKeyboardInteractiveSecondFactor(user *User, client ssh.KeyboardInteractiveChallenge, protocol string) (int, error) {
 	if !user.Filters.TOTPConfig.Enabled || !util.Contains(user.Filters.TOTPConfig.Protocols, protocolSSH) {
 		return 1, nil
 	}
-	err = user.Filters.TOTPConfig.Secret.TryDecrypt()
+	err := user.Filters.TOTPConfig.Secret.TryDecrypt()
 	if err != nil {
 		providerLog(logger.LevelError, "unable to decrypt TOTP secret for user %q, protocol %v, err: %v",
 			user.Username, protocol, err)
 		return 0, err
 	}
-	answers, err = client("", "", []string{"Authentication code: "}, []bool{false})
+	answers, err := client("", "", []string{"Authentication code: "}, []bool{false})
 	if err != nil {
 		return 0, err
 	}
@@ -3742,6 +3746,9 @@ func doKeyboardInteractiveAuth(user *User, authHook string, client ssh.KeyboardI
 	var err error
 	if plugin.Handler.HasAuthScope(plugin.AuthScopeKeyboardInteractive) {
 		authResult, err = executeKeyboardInteractivePlugin(user, client, ip, protocol)
+		if authResult == 1 && err == nil {
+			authResult, err = checkKeyboardInteractiveSecondFactor(user, client, protocol)
+		}
 	} else if authHook != "" {
 		if strings.HasPrefix(authHook, "http") {
 			authResult, err = executeKeyboardInteractiveHTTPHook(user, authHook, client, ip, protocol)
@@ -4110,6 +4117,35 @@ func updateUserFromExtAuthResponse(user *User, password, pkey string) {
 	user.LastPasswordChange = 0
 }
 
+func checkPasswordAfterEmptyExtAuthResponse(user *User, plainPwd, protocol string) error {
+	if plainPwd == "" {
+		return nil
+	}
+	match, err := isPasswordOK(user, plainPwd)
+	if match && err == nil {
+		return nil
+	}
+
+	hashedPwd, err := hashPlainPassword(plainPwd)
+	if err != nil {
+		providerLog(logger.LevelError, "unable to hash password for user %q after empty external response: %v",
+			user.Username, err)
+		return err
+	}
+	err = provider.updateUserPassword(user.Username, hashedPwd)
+	if err != nil {
+		providerLog(logger.LevelError, "unable to update password for user %q after empty external response: %v",
+			user.Username, err)
+	}
+	user.Password = hashedPwd
+	cachedUserPasswords.Add(user.Username, plainPwd, user.Password)
+	if protocol != protocolWebDAV {
+		webDAVUsersCache.swap(user, plainPwd)
+	}
+	providerLog(logger.LevelDebug, "updated password for user %q after empty external auth response", user.Username)
+	return nil
+}
+
 func doExternalAuth(username, password string, pubKey []byte, keyboardInteractive, ip, protocol string,
 	tlsCert *x509.Certificate,
 ) (User, error) {
@@ -4141,7 +4177,8 @@ func doExternalAuth(username, password string, pubKey []byte, keyboardInteractiv
 		if u.ID == 0 {
 			return u, util.NewRecordNotFoundError(fmt.Sprintf("username %q does not exist", username))
 		}
-		return u, nil
+		err = checkPasswordAfterEmptyExtAuthResponse(&u, password, protocol)
+		return u, err
 	}
 	err = json.Unmarshal(out, &user)
 	if err != nil {
@@ -4214,18 +4251,19 @@ func doPluginAuth(username, password string, pubKey []byte, ip, protocol string,
 
 	out, err := plugin.Handler.Authenticate(username, password, ip, protocol, pkey, tlsCert, authScope, userAsJSON)
 	if err != nil {
-		return user, fmt.Errorf("plugin auth error for user %q: %v, elapsed: %v, auth scope: %v",
+		return user, fmt.Errorf("plugin auth error for user %q: %v, elapsed: %v, auth scope: %d",
 			username, err, time.Since(startTime), authScope)
 	}
-	providerLog(logger.LevelDebug, "plugin auth completed for user %q, elapsed: %v,auth scope: %v",
+	providerLog(logger.LevelDebug, "plugin auth completed for user %q, elapsed: %v, auth scope: %d",
 		username, time.Since(startTime), authScope)
 	if util.IsByteArrayEmpty(out) {
-		providerLog(logger.LevelDebug, "empty response from plugin auth, no modification requested for user %q id: %v",
-			username, u.ID)
+		providerLog(logger.LevelDebug, "empty response from plugin auth, no modification requested for user %q id: %d, auth scope: %d",
+			username, u.ID, authScope)
 		if u.ID == 0 {
 			return u, util.NewRecordNotFoundError(fmt.Sprintf("username %q does not exist", username))
 		}
-		return u, nil
+		err = checkPasswordAfterEmptyExtAuthResponse(&u, password, protocol)
+		return u, err
 	}
 	err = json.Unmarshal(out, &user)
 	if err != nil {

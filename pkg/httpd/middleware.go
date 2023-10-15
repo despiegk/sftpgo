@@ -384,6 +384,13 @@ func checkAPIKeyAuth(tokenAuth *jwtauth.JWTAuth, scope dataprovider.APIKeyScope)
 				sendAPIResponse(w, r, errors.New("the provided api key is not valid"), "", http.StatusBadRequest)
 				return
 			}
+			if k.Scope != scope {
+				handleDefenderEventLoginFailed(util.GetIPFromRemoteAddress(r.RemoteAddr), dataprovider.ErrInvalidCredentials) //nolint:errcheck
+				logger.Debug(logSender, "", "unable to authenticate api key %q: invalid scope: got %d, wanted: %d",
+					apiKey, k.Scope, scope)
+				sendAPIResponse(w, r, fmt.Errorf("the provided api key is invalid for this request"), "", http.StatusForbidden)
+				return
+			}
 			if err := k.Authenticate(key); err != nil {
 				handleDefenderEventLoginFailed(util.GetIPFromRemoteAddress(r.RemoteAddr), dataprovider.ErrInvalidCredentials) //nolint:errcheck
 				logger.Debug(logSender, "", "unable to authenticate api key %q: %v", apiKey, err)
@@ -545,4 +552,15 @@ func checkPartialAuth(w http.ResponseWriter, r *http.Request, audience string, t
 		return errInvalidToken
 	}
 	return nil
+}
+
+func neuter(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/") {
+			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
