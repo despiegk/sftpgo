@@ -981,9 +981,14 @@ func (u *User) getPatternsFilterForPath(virtualPath string) sdk.PatternsFilter {
 		return filter
 	}
 	dirsForPath := util.GetDirsForVirtualPath(virtualPath)
-	for _, dir := range dirsForPath {
+	for idx, dir := range dirsForPath {
 		for _, f := range u.Filters.FilePatterns {
 			if f.Path == dir {
+				if idx > 0 && len(f.AllowedPatterns) > 0 && len(f.DeniedPatterns) > 0 && f.DeniedPatterns[0] == "*" {
+					if f.CheckAllowed(path.Base(dirsForPath[idx-1])) {
+						return filter
+					}
+				}
 				filter = f
 				break
 			}
@@ -1004,7 +1009,7 @@ func (u *User) isDirHidden(virtualPath string) bool {
 			return false
 		}
 		filter := u.getPatternsFilterForPath(dirPath)
-		if filter.DenyPolicy == sdk.DenyPolicyHide {
+		if filter.DenyPolicy == sdk.DenyPolicyHide && filter.Path != dirPath {
 			if !filter.CheckAllowed(path.Base(dirPath)) {
 				return true
 			}
@@ -1173,7 +1178,7 @@ func (u *User) MustSetSecondFactorForProtocol(protocol string) bool {
 	return false
 }
 
-// GetSignature returns a signature for this admin.
+// GetSignature returns a signature for this user.
 // It will change after an update
 func (u *User) GetSignature() string {
 	return strconv.FormatInt(u.UpdatedAt, 10)
@@ -1827,6 +1832,9 @@ func (u *User) mergeVirtualFolders(group *Group, groupType int, replacer *string
 }
 
 func (u *User) mergePermissions(group *Group, groupType int, replacer *strings.Replacer) {
+	if u.Permissions == nil {
+		u.Permissions = make(map[string][]string)
+	}
 	for k, v := range group.UserSettings.Permissions {
 		if k == "/" {
 			if groupType == sdk.GroupTypePrimary {

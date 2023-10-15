@@ -42,7 +42,7 @@ const (
 
 func getSQLPlaceholders() []string {
 	var placeholders []string
-	for i := 1; i <= 50; i++ {
+	for i := 1; i <= 100; i++ {
 		if config.Driver == PGSQLDataProviderName || config.Driver == CockroachDataProviderName {
 			placeholders = append(placeholders, fmt.Sprintf("$%d", i))
 		} else {
@@ -400,7 +400,7 @@ func getUsersInGroupsQuery(numArgs int) string {
 	} else {
 		sb.WriteString("('')")
 	}
-	return fmt.Sprintf(`SELECT username FROM %s WHERE id IN (SELECT user_id from %s WHERE group_id IN (SELECT id FROM %s WHERE name IN (%s)))`,
+	return fmt.Sprintf(`SELECT username FROM %s WHERE id IN (SELECT user_id from %s WHERE group_id IN (SELECT id FROM %s WHERE name IN %s))`,
 		sqlTableUsers, sqlTableUsersGroupsMapping, getSQLQuotedName(sqlTableGroups), sb.String())
 }
 
@@ -716,8 +716,8 @@ func getUpdateUserQuery(role string) string {
 }
 
 func getUpdateUserPasswordQuery() string {
-	return fmt.Sprintf(`UPDATE %s SET password=%s WHERE username = %s`,
-		sqlTableUsers, sqlPlaceholders[0], sqlPlaceholders[1])
+	return fmt.Sprintf(`UPDATE %s SET password=%s,updated_at=%s WHERE username = %s`,
+		sqlTableUsers, sqlPlaceholders[0], sqlPlaceholders[1], sqlPlaceholders[2])
 }
 
 func getDeleteUserQuery(softDelete bool) string {

@@ -7955,7 +7955,7 @@ func TestLoaddata(t *testing.T) {
 	configsGet, err := dataprovider.GetConfigs()
 	assert.NoError(t, err)
 	assert.Equal(t, configs.SMTP, configsGet.SMTP)
-	assert.Equal(t, configs.SFTPD.HostKeyAlgos, configsGet.SFTPD.HostKeyAlgos)
+	assert.Equal(t, []string{ssh.KeyAlgoRSA}, configsGet.SFTPD.HostKeyAlgos)
 	assert.Len(t, configsGet.SFTPD.Moduli, 0)
 	assert.Len(t, configsGet.SFTPD.KexAlgorithms, 0)
 	assert.Len(t, configsGet.SFTPD.Ciphers, 0)
@@ -12773,6 +12773,8 @@ func TestWebConfigsMock(t *testing.T) {
 	assert.Contains(t, rr.Body.String(), ssh.CertAlgoDSAv01) // invalid algo
 	form.Set("sftp_host_key_algos", ssh.KeyAlgoRSA)
 	form.Add("sftp_host_key_algos", ssh.CertAlgoRSAv01)
+	form.Set("sftp_kex_algos", "diffie-hellman-group18-sha512")
+	form.Add("sftp_kex_algos", "diffie-hellman-group16-sha512")
 	req, err = http.NewRequest(http.MethodPost, webConfigsPath, bytes.NewBuffer([]byte(form.Encode())))
 	assert.NoError(t, err)
 	setJWTCookieForReq(req, webToken)
@@ -12783,12 +12785,13 @@ func TestWebConfigsMock(t *testing.T) {
 	// check SFTP configs
 	configs, err := dataprovider.GetConfigs()
 	assert.NoError(t, err)
-	assert.Len(t, configs.SFTPD.HostKeyAlgos, 2)
+	assert.Len(t, configs.SFTPD.HostKeyAlgos, 1)
 	assert.Contains(t, configs.SFTPD.HostKeyAlgos, ssh.KeyAlgoRSA)
-	assert.Contains(t, configs.SFTPD.HostKeyAlgos, ssh.CertAlgoRSAv01)
 	assert.Len(t, configs.SFTPD.Moduli, 2)
 	assert.Contains(t, configs.SFTPD.Moduli, "path 1")
 	assert.Contains(t, configs.SFTPD.Moduli, "path 2")
+	assert.Len(t, configs.SFTPD.KexAlgorithms, 1)
+	assert.Contains(t, configs.SFTPD.KexAlgorithms, "diffie-hellman-group16-sha512")
 	// invalid form action
 	form.Set("form_action", "")
 	req, err = http.NewRequest(http.MethodPost, webConfigsPath, bytes.NewBuffer([]byte(form.Encode())))
@@ -12830,9 +12833,8 @@ func TestWebConfigsMock(t *testing.T) {
 	// check
 	configs, err = dataprovider.GetConfigs()
 	assert.NoError(t, err)
-	assert.Len(t, configs.SFTPD.HostKeyAlgos, 2)
+	assert.Len(t, configs.SFTPD.HostKeyAlgos, 1)
 	assert.Contains(t, configs.SFTPD.HostKeyAlgos, ssh.KeyAlgoRSA)
-	assert.Contains(t, configs.SFTPD.HostKeyAlgos, ssh.CertAlgoRSAv01)
 	assert.Len(t, configs.SFTPD.Moduli, 2)
 	assert.Equal(t, "mail.example.net", configs.SMTP.Host)
 	assert.Equal(t, 587, configs.SMTP.Port)
@@ -12901,9 +12903,8 @@ func TestWebConfigsMock(t *testing.T) {
 	// check
 	configs, err = dataprovider.GetConfigs()
 	assert.NoError(t, err)
-	assert.Len(t, configs.SFTPD.HostKeyAlgos, 2)
+	assert.Len(t, configs.SFTPD.HostKeyAlgos, 1)
 	assert.Contains(t, configs.SFTPD.HostKeyAlgos, ssh.KeyAlgoRSA)
-	assert.Contains(t, configs.SFTPD.HostKeyAlgos, ssh.CertAlgoRSAv01)
 	assert.Len(t, configs.SFTPD.Moduli, 2)
 	assert.Equal(t, 80, configs.ACME.HTTP01Challenge.Port)
 	assert.Equal(t, 7, configs.ACME.Protocols)
@@ -12934,7 +12935,7 @@ func TestWebConfigsMock(t *testing.T) {
 	assert.Contains(t, rr.Body.String(), "Configurations updated")
 	configs, err = dataprovider.GetConfigs()
 	assert.NoError(t, err)
-	assert.Len(t, configs.SFTPD.HostKeyAlgos, 2)
+	assert.Len(t, configs.SFTPD.HostKeyAlgos, 1)
 	assert.Equal(t, 402, configs.ACME.HTTP01Challenge.Port)
 	assert.Equal(t, 1, configs.ACME.Protocols)
 	assert.Equal(t, domain, configs.ACME.Domain)
@@ -13896,7 +13897,8 @@ func TestShareUploadSingle(t *testing.T) {
 	assert.NoError(t, err)
 	req.SetBasicAuth(defaultUsername, defaultPassword)
 	rr = executeRequest(req)
-	checkResponseCode(t, http.StatusNotFound, rr)
+	checkResponseCode(t, http.StatusBadRequest, rr)
+	assert.Contains(t, rr.Body.String(), "operation unsupported")
 
 	err = os.MkdirAll(filepath.Join(user.GetHomeDir(), "dir"), os.ModePerm)
 	assert.NoError(t, err)
@@ -13906,6 +13908,13 @@ func TestShareUploadSingle(t *testing.T) {
 	rr = executeRequest(req)
 	checkResponseCode(t, http.StatusBadRequest, rr)
 	assert.Contains(t, rr.Body.String(), "operation unsupported")
+
+	// only uploads to the share root dir are allowed
+	req, err = http.NewRequest(http.MethodPost, path.Join(sharesPath, objectID, "dir", "file.dat"), bytes.NewBuffer(content))
+	assert.NoError(t, err)
+	req.SetBasicAuth(defaultUsername, defaultPassword)
+	rr = executeRequest(req)
+	checkResponseCode(t, http.StatusNotFound, rr)
 
 	share, err = dataprovider.ShareExists(objectID, user.Username)
 	assert.NoError(t, err)
@@ -14889,9 +14898,11 @@ func TestUserAPIShares(t *testing.T) {
 func TestUsersAPISharesNoPasswordDisabled(t *testing.T) {
 	u := getTestUser()
 	u.Filters.WebClient = []string{sdk.WebClientShareNoPasswordDisabled}
+	u.Filters.PasswordStrength = 70
+	u.Password = "ahpoo8baa6EeZieshies"
 	user, _, err := httpdtest.AddUser(u, http.StatusCreated)
 	assert.NoError(t, err)
-	token, err := getJWTAPIUserTokenFromTestServer(defaultUsername, defaultPassword)
+	token, err := getJWTAPIUserTokenFromTestServer(defaultUsername, u.Password)
 	assert.NoError(t, err)
 
 	share := dataprovider.Share{
@@ -14909,6 +14920,15 @@ func TestUsersAPISharesNoPasswordDisabled(t *testing.T) {
 	assert.Contains(t, rr.Body.String(), "You are not authorized to share files/folders without a password")
 
 	share.Password = defaultPassword
+	asJSON, err = json.Marshal(share)
+	assert.NoError(t, err)
+	req, err = http.NewRequest(http.MethodPost, userSharesPath, bytes.NewBuffer(asJSON))
+	assert.NoError(t, err)
+	setBearerForReq(req, token)
+	rr = executeRequest(req)
+	checkResponseCode(t, http.StatusBadRequest, rr)
+
+	share.Password = "vi5eiJoovee5ya9yahpi"
 	asJSON, err = json.Marshal(share)
 	assert.NoError(t, err)
 	req, err = http.NewRequest(http.MethodPost, userSharesPath, bytes.NewBuffer(asJSON))
@@ -14954,6 +14974,13 @@ func TestUserAPIKey(t *testing.T) {
 	apiKey, _, err = httpdtest.AddAPIKey(apiKey, http.StatusCreated)
 	assert.NoError(t, err)
 
+	adminAPIKey := dataprovider.APIKey{
+		Name:  "testadminkey",
+		Scope: dataprovider.APIKeyScopeAdmin,
+	}
+	adminAPIKey, _, err = httpdtest.AddAPIKey(adminAPIKey, http.StatusCreated)
+	assert.NoError(t, err)
+
 	body := new(bytes.Buffer)
 	writer := multipart.NewWriter(body)
 	part, err := writer.CreateFormFile("filenames", "filenametest")
@@ -14981,6 +15008,12 @@ func TestUserAPIKey(t *testing.T) {
 	err = json.Unmarshal(rr.Body.Bytes(), &dirEntries)
 	assert.NoError(t, err)
 	assert.Len(t, dirEntries, 1)
+
+	req, err = http.NewRequest(http.MethodGet, userDirsPath, nil)
+	assert.NoError(t, err)
+	setAPIKeyForReq(req, adminAPIKey.Key, user.Username)
+	rr = executeRequest(req)
+	checkResponseCode(t, http.StatusForbidden, rr)
 
 	user.Status = 0
 	user, _, err = httpdtest.UpdateUser(user, http.StatusOK, "")
@@ -15057,6 +15090,9 @@ func TestUserAPIKey(t *testing.T) {
 	assert.NoError(t, err)
 
 	_, err = httpdtest.RemoveAPIKey(apiKeyNew, http.StatusOK)
+	assert.NoError(t, err)
+
+	_, err = httpdtest.RemoveAPIKey(adminAPIKey, http.StatusOK)
 	assert.NoError(t, err)
 }
 
@@ -22722,6 +22758,72 @@ func TestWebRole(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestNameParamSingleSlash(t *testing.T) {
+	err := dataprovider.Close()
+	assert.NoError(t, err)
+	err = config.LoadConfig(configDir, "")
+	assert.NoError(t, err)
+	providerConf := config.GetProviderConf()
+	providerConf.NamingRules = 5
+	err = dataprovider.Initialize(providerConf, configDir, true)
+	assert.NoError(t, err)
+
+	webToken, err := getJWTWebTokenFromTestServer(defaultTokenAuthUser, defaultTokenAuthPass)
+	assert.NoError(t, err)
+	apiToken, err := getJWTAPITokenFromTestServer(defaultTokenAuthUser, defaultTokenAuthPass)
+	assert.NoError(t, err)
+	csrfToken, err := getCSRFToken(httpBaseURL + webLoginPath)
+	assert.NoError(t, err)
+	group := getTestGroup()
+	group.Name = "/"
+	form := make(url.Values)
+	form.Set("name", group.Name)
+	form.Set("description", group.Description)
+	form.Set("max_sessions", "0")
+	form.Set("quota_files", "0")
+	form.Set("quota_size", "0")
+	form.Set("upload_bandwidth", "0")
+	form.Set("download_bandwidth", "0")
+	form.Set("upload_data_transfer", "0")
+	form.Set("download_data_transfer", "0")
+	form.Set("total_data_transfer", "0")
+	form.Set("max_upload_file_size", "0")
+	form.Set("default_shares_expiration", "0")
+	form.Set("max_shares_expiration", "0")
+	form.Set("password_expiration", "0")
+	form.Set("password_strength", "0")
+	form.Set("expires_in", "0")
+	form.Set("external_auth_cache_time", "0")
+	form.Set(csrfFormToken, csrfToken)
+	b, contentType, err := getMultipartFormData(form, "", "")
+	assert.NoError(t, err)
+	req, err := http.NewRequest(http.MethodPost, webGroupPath, &b)
+	assert.NoError(t, err)
+	req.Header.Set("Content-Type", contentType)
+	setJWTCookieForReq(req, webToken)
+	rr := executeRequest(req)
+	checkResponseCode(t, http.StatusSeeOther, rr)
+
+	groupGet, _, err := httpdtest.GetGroupByName(group.Name, http.StatusOK)
+	assert.NoError(t, err)
+	assert.Equal(t, "/", groupGet.Name)
+	// cleanup
+	req, err = http.NewRequest(http.MethodDelete, groupPath+"/"+url.PathEscape(group.Name), nil)
+	assert.NoError(t, err)
+	setBearerForReq(req, apiToken)
+	rr = executeRequest(req)
+	checkResponseCode(t, http.StatusOK, rr)
+
+	err = dataprovider.Close()
+	assert.NoError(t, err)
+	err = config.LoadConfig(configDir, "")
+	assert.NoError(t, err)
+	providerConf = config.GetProviderConf()
+	providerConf.BackupsPath = backupsPath
+	err = dataprovider.Initialize(providerConf, configDir, true)
+	assert.NoError(t, err)
+}
+
 func TestAddWebGroup(t *testing.T) {
 	webToken, err := getJWTWebTokenFromTestServer(defaultTokenAuthUser, defaultTokenAuthPass)
 	assert.NoError(t, err)
@@ -24242,7 +24344,7 @@ func TestStaticFilesMock(t *testing.T) {
 	req, err = http.NewRequest(http.MethodGet, location, nil)
 	assert.NoError(t, err)
 	rr = executeRequest(req)
-	checkResponseCode(t, http.StatusOK, rr)
+	checkResponseCode(t, http.StatusForbidden, rr)
 
 	req, err = http.NewRequest(http.MethodGet, "/openapi", nil)
 	assert.NoError(t, err)
