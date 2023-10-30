@@ -786,6 +786,62 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
         });
     }
 
+		function escJson(string) {
+			if (!string) {
+				return "";
+			}
+			return ("" + string).replace(/[&<>"'\/\\]/g, function(s) {
+				return {
+					"&": "&amp;",
+					"<": "&lt;",
+					">": "&gt;",
+					'"': '&quot;',
+					"'": '&#39;',
+					"/": '&#47;',
+					"\\": '&#92;'
+				}[s];
+			});
+		}
+
+		async function shareFile(sharePath, body, editUrlWithoutID) {
+			let response;
+			let errorMessage = "Error sharing file";
+			try {
+					response = await fetch(sharePath, {
+							method: 'POST',
+							headers: {
+									'X-CSRF-TOKEN': '{{.CSRFToken}}'
+							},
+							credentials: 'same-origin',
+							redirect: 'error',
+							body: JSON.stringify(body)
+					});
+			} catch (e){
+					throw Error(errorMessage+": " +e.message);
+			}
+			if (response.status == 201){
+					let shareID = response.headers.get("X-Object-ID");
+					let editURL = editUrlWithoutID+shareID;
+					navigator.clipboard.writeText(editURL);
+					alert("File's edit url is copied to clipboard");
+					window.open(editURL, '_blank');
+			} else {
+					let jsonResponse;
+					try {
+							jsonResponse = await response.json();
+					} catch(e){
+							throw Error(errorMessage);
+					}
+					if (jsonResponse.message) {
+							errorMessage = jsonResponse.message;
+					}
+					if (jsonResponse.error) {
+							errorMessage += ": " + jsonResponse.error;
+					}
+					throw Error(errorMessage);
+			}
+		}
+
     const isDirectoryEntry = item => isEntry(item) && (getAsEntry(item) || {}).isDirectory;
     const isEntry = item => 'webkitGetAsEntry' in item;
     const getAsEntry = item => item.webkitGetAsEntry();
@@ -1300,7 +1356,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
                             if (data){
                                 if (extension == "csv" || extension == "bat" || checkOnlyOfficeExt(extension) || CodeMirror.findModeByExtension(extension) != null){
                                     {{if .CanAddFiles}}
-                                    return `<a href="${data}"><i class="fas fa-edit"></i></a>`;
+                                    return `
+																		<a href="${data}"><i class="fas fa-edit"></i></a>
+																		<a href="#" onclick="shareFile('${row["share_url"]}', ${escJson(row["share_body"])}, '${row["edit_shared_url_without_id"]}');"><i class="fas fa-share-alt"></i></a>`
                                     {{else}}
                                     return `<a href="${data}"><i class="fas fa-eye"></i></a>`;
                                     {{end}}
