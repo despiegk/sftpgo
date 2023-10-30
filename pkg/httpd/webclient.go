@@ -1145,6 +1145,23 @@ func (s *httpdServer) handleClientGetDirContents(w http.ResponseWriter, r *http.
 				res["size"] = info.Size()
 				if info.Size() < httpdMaxEditFileSize {
 					res["edit_url"] = strings.Replace(res["url"].(string), webClientFilesPath, webClientEditFilePath, 1)
+
+					// share request
+					share := dataprovider.Share{
+						Scope:    dataprovider.ShareScopeReadWrite,
+						Name:     filepath.Base(info.Name()),
+						Paths:    []string{name + info.Name()},
+						Username: claims.Username,
+					}
+					res["share_url"] = strings.Replace(res["url"].(string), webClientFilesPath, userSharesPath, 1) + fmt.Sprintf("&jwt=%s", jwtauth.TokenFromCookie(r))
+					jsonShare, err := json.Marshal(share)
+					if err != nil {
+						sendAPIResponse(w, r, err, "Unable to marshal share", getMappedStatusCode(err))
+						return
+					}
+					res["share_body"] = string(jsonShare)
+					res["edit_shared_url_without_id"] = getFileObjectURL(name, info.Name(),
+						webClientEditFilePath) + "&id="
 				}
 				if len(s.binding.WebClientIntegrations) > 0 {
 					extension := path.Ext(info.Name())
