@@ -821,7 +821,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 			}
 			if (response.status == 201){
 					let shareID = response.headers.get("X-Object-ID");
-					let editURL = editUrlWithoutID+shareID;
+					let editURL = editUrlWithoutID+"&id="+shareID;
 					navigator.clipboard.writeText(editURL);
 					alert("File's edit url is copied to clipboard");
 					window.open(editURL, '_blank');
@@ -1358,7 +1358,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
                                     {{if .CanAddFiles}}
                                     return `
 																		<a href="${data}"><i class="fas fa-edit"></i></a>
-																		<a href="#" onclick="shareFile('${row["share_url"]}', ${escJson(row["share_body"])}, '${row["edit_shared_url_without_id"]}');"><i class="fas fa-share-alt"></i></a>`
+																		<a href="#" onclick="shareFile('${row["share_url"]}', ${escJson(row["share_body"])}, '${data}');"><i class="fas fa-share-alt"></i></a>`
                                     {{else}}
                                     return `<a href="${data}"><i class="fas fa-eye"></i></a>`;
                                     {{end}}
