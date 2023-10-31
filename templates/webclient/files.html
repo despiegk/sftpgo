@@ -822,7 +822,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 			if (response.status == 201){
 					let shareID = response.headers.get("X-Object-ID");
 					let editURL = editUrlWithoutID+"&id="+shareID;
-					navigator.clipboard.writeText(editURL);
+					navigator.clipboard.writeText(location.protocol.concat("//").concat(window.location.host)+editURL);
 					alert("File's edit url is copied to clipboard");
 					window.open(editURL, '_blank');
 			} else {
