@@ -118,6 +118,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
     </button>
 </div>
 
+<div id="successMsg" class="alert alert-success alert-dismissible fade show" style="display: none;" role="alert">
+	<span id="successTxt"></span>
+	<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+		<span aria-hidden="true">&times;</span>
+	</button>
+</div>
+
 <div class="card shadow mb-4">
     <div class="card-header py-3">
         <h6 class="m-0 font-weight-bold"><a href="{{.FilesURL}}?path=%2F"><i class="fas fa-home"></i>&nbsp;Home</a>&nbsp;{{range .Paths}}{{if eq .Href ""}}/{{.DirName}}{{else}}<a href="{{.Href}}">/{{.DirName}}</a>{{end}}{{end}}</h6>
@@ -803,7 +810,35 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 			});
 		}
 
+		async function copyToClipboard(textToCopy) {
+			// Navigator clipboard api needs a secure context (https)
+			if (navigator.clipboard && window.isSecureContext) {
+					await navigator.clipboard.writeText(textToCopy);
+			} else {
+					// Use the 'out of viewport hidden text area' trick
+					const textArea = document.createElement("textarea");
+					textArea.value = textToCopy;
+							
+					// Move textarea out of the viewport so it's not visible
+					textArea.style.position = "absolute";
+					textArea.style.left = "-999999px";
+							
+					document.body.prepend(textArea);
+					textArea.select();
+	
+					try {
+							document.execCommand('copy');
+					} catch (error) {
+							console.error(error);
+					} finally {
+							textArea.remove();
+					}
+			}
+		}
+
 		async function shareFile(sharePath, body, editUrlWithoutID) {
+			$('#errorMsg').hide();
+			$('#successMsg').hide();
 			let response;
 			let errorMessage = "Error sharing file";
 			try {
@@ -822,12 +857,20 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 			if (response.status == 201){
 					let shareID = response.headers.get("X-Object-ID");
 					let editURL = editUrlWithoutID+"&id="+shareID;
-					navigator.clipboard.writeText(location.protocol.concat("//").concat(window.location.host)+editURL).then(function() {
-						alert("File's edit url is copied to clipboard");
+					copyToClipboard(location.protocol.concat("//").concat(window.location.host)+editURL).then(function() {
+						$('#successTxt').text("File's edit url is copied to clipboard");
+						$('#successMsg').show();
+						setTimeout(() => {
+							$('#successMsg').hide();
+							window.open(editURL, '_blank');
+						}, 1000); 
 					}, function(err) {
-						alert("Could not copy file's edit url: " + err);
+						$('#errorTxt').text("Could not copy file's edit url: " + err);
+            $('#errorMsg').show();
+						setTimeout(() => {
+							$('#errorMsg').hide();
+						}, 2000); 
 					});
-					window.open(editURL, '_blank');
 			} else {
 					let jsonResponse;
 					try {
