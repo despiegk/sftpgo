@@ -822,8 +822,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 			if (response.status == 201){
 					let shareID = response.headers.get("X-Object-ID");
 					let editURL = editUrlWithoutID+"&id="+shareID;
-					navigator.clipboard.writeText(location.protocol.concat("//").concat(window.location.host)+editURL);
-					alert("File's edit url is copied to clipboard");
+					navigator.clipboard.writeText(location.protocol.concat("//").concat(window.location.host)+editURL).then(function() {
+						alert("File's edit url is copied to clipboard");
+					}, function(err) {
+						alert("Could not copy file's edit url: " + err);
+					});
 					window.open(editURL, '_blank');
 			} else {
 					let jsonResponse;
