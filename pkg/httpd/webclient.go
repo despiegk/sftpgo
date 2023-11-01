@@ -727,8 +727,7 @@ func (s *httpdServer) renderEditFilePage(w http.ResponseWriter, r *http.Request,
 				return
 			}
 			path := url.QueryEscape(fileName)
-			tokenString := jwtauth.TokenFromCookie(r)
-			documentURL += fmt.Sprintf("/api/v2/user/files?path=%s&jwt=%s", path, tokenString)
+			documentURL += fmt.Sprintf("%v?path=%v&_=%v", webClientFilesPath, path, time.Now().UTC().Unix())
 		}
 		name := connection.User.GetCleanedPath(fileName)
 		info, err := connection.Stat(name, 0)
@@ -1145,6 +1144,21 @@ func (s *httpdServer) handleClientGetDirContents(w http.ResponseWriter, r *http.
 				res["size"] = info.Size()
 				if info.Size() < httpdMaxEditFileSize {
 					res["edit_url"] = strings.Replace(res["url"].(string), webClientFilesPath, webClientEditFilePath, 1)
+
+					// share request
+					share := dataprovider.Share{
+						Scope:    dataprovider.ShareScopeReadWrite,
+						Name:     filepath.Base(info.Name()),
+						Paths:    []string{name + info.Name()},
+						Username: claims.Username,
+					}
+					res["share_url"] = strings.Replace(res["url"].(string), webClientFilesPath, userSharesPath, 1) + fmt.Sprintf("&jwt=%s&_=%v", jwtauth.TokenFromCookie(r), time.Now().UTC().Unix())
+					jsonShare, err := json.Marshal(share)
+					if err != nil {
+						sendAPIResponse(w, r, err, "Unable to marshal share", getMappedStatusCode(err))
+						return
+					}
+					res["share_body"] = string(jsonShare)
 				}
 				if len(s.binding.WebClientIntegrations) > 0 {
 					extension := path.Ext(info.Name())
