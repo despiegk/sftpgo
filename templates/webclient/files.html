@@ -1376,7 +1376,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
                                 return `<i class="fas fa-external-link-alt"></i>&nbsp;<a class="${cssClass}" href="${row['url']}" title="${title}">${shortened}</a>`;
                             }
                             let icon = getIconForFile(data);
-                            return `<i class="${icon}"></i>&nbsp;<a class="${cssClass}" href="${row['url']}" title="${title}">${shortened}</a>`;
+														if (icon == "far fa-file-image") {
+															let thumbnail = `<a href="${row['url']}" data-lightbox="image-gallery-thumbnail" data-title="${title}"><img src="${row['url']}" alt="${title}" style="width:15px"></a>`;
+															return `${thumbnail}&nbsp;<a class="${cssClass}" href="${row['url']}" title="${title}">${shortened}</a>`;
+														}
+														return `<i class="${icon}"></i>&nbsp;<a class="${cssClass}" href="${row['url']}" title="${title}">${shortened}</a>`;
                         }
                         return data;
                     }
