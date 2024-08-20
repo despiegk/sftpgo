@@ -41,7 +41,7 @@ require (
 	github.com/klauspost/compress v1.17.0
 	github.com/lestrrat-go/jwx/v2 v2.0.13
 	github.com/lithammer/shortuuid/v3 v3.0.7
-	github.com/mattn/go-sqlite3 v1.14.17
+	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/mhale/smtpd v0.8.0
 	github.com/minio/sio v0.3.1
 	github.com/otiai10/copy v1.14.0
